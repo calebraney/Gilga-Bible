@@ -1,4 +1,4 @@
-import { attr, checkBreakpoints, runSplit } from '../utilities';
+import { attr, checkBreakpoints, runSplit, getClipDirection } from '../utilities';
 
 export const scrollIn = function (gsapContext) {
   //animation ID
@@ -21,6 +21,13 @@ export const scrollIn = function (gsapContext) {
   const SCROLL_START = 'data-ix-scrollin-start';
   const SCROLL_END = 'data-ix-scrollin-end';
   const CLIP_DIRECTION = 'data-ix-scrollin-direction';
+  const SCROLL_STAGGER = 'data-ix-scrollin-stagger';
+
+  // DEFAULTS
+  const EASE_SMALL = 0.1;
+  const EASE_LARGE = 0.3;
+  const DURATION = 0.6;
+  const EASE = 'power1.out';
 
   //resuable timeline creation with option attributes for individual customization per element
   const scrollInTL = function (item) {
@@ -38,8 +45,8 @@ export const scrollIn = function (gsapContext) {
     settings.end = attr(settings.end, item.getAttribute(SCROLL_END));
     const tl = gsap.timeline({
       defaults: {
-        duration: 0.6,
-        ease: 'power1.out',
+        duration: DURATION,
+        ease: EASE,
       },
       scrollTrigger: {
         trigger: item,
@@ -63,12 +70,16 @@ export const scrollIn = function (gsapContext) {
       y: '0rem',
     };
     //optional adjustments to the tween
+    // {stagger: 0.2}
+    if (options.stagger) {
+      varsTo.stagger = { each: options.stagger, from: 'start' };
+    }
     // {stagger: large}
     if (options.stagger === 'small') {
-      varsTo.stagger = { each: 0.1, from: 'start' };
+      varsTo.stagger = { each: EASE_SMALL, from: 'start' };
     }
     if (options.stagger === 'large') {
-      varsTo.stagger = { each: 0.3, from: 'start' };
+      varsTo.stagger = { each: EASE_LARGE, from: 'start' };
     }
     // putting tween together
     const tween = tl.fromTo(item, varsFrom, varsTo);
@@ -86,10 +97,17 @@ export const scrollIn = function (gsapContext) {
     //set heading to full opacity (check to see if needed)
     // item.style.opacity = 1;
     const tl = scrollInTL(item);
-    const tween = defaultTween(splitText.words, tl, { stagger: 'small', skew: 'large' });
+    const tween = defaultTween(splitText.words, tl, { stagger: 'small' });
     //add event calleback to revert text on completion
-    tl.eventCallback('onComplete', () => {
-      splitText.revert();
+    // tl.eventCallback('onComplete', () => {
+    //   splitText.revert();
+    // });
+    //revert split text when exiting viewport
+    ScrollTrigger.create({
+      trigger: item,
+      start: 'top bottom',
+      end: 'bottom top',
+      onLeave: (self) => splitText.revert(),
     });
   };
 
@@ -108,35 +126,6 @@ export const scrollIn = function (gsapContext) {
       const tl = scrollInTL(item);
       const tween = defaultTween(item, tl);
     }
-  };
-
-  //utility function to get the clipping direction of items (horizontal or vertical only)
-  const getCLipStart = function (item) {
-    //set defautl direction
-    let defaultDirection = 'right';
-    let clipStart;
-    //get the clip direction
-    const direction = attr(defaultDirection, item.getAttribute(CLIP_DIRECTION));
-    const clipDirections = {
-      left: 'polygon(0% 0%, 0% 0%, 0% 100%, 0% 100%)',
-      right: 'polygon(100% 0%, 100% 0%, 100% 100%, 100% 100%)',
-      top: 'polygon(0% 0%, 100% 0%, 100% 0%, 0% 0%)',
-      bottom: 'polygon(0% 100%, 100% 100%, 100% 100%, 0% 100%)',
-    };
-    //check for each possible direction and map it to the correct clipping value
-    if (direction === 'left') {
-      clipStart = clipDirections.left;
-    }
-    if (direction === 'right') {
-      clipStart = clipDirections.right;
-    }
-    if (direction === 'top') {
-      clipStart = clipDirections.top;
-    }
-    if (direction === 'bottom') {
-      clipStart = clipDirections.bottom;
-    }
-    return clipStart;
   };
 
   const scrollInImage = function (item) {
@@ -172,8 +161,9 @@ export const scrollIn = function (gsapContext) {
   const scrollInLine = function (item) {
     if (!item) return;
     //set clip path directions
-    const clipStart = getCLipStart(item);
-    const clipEnd = 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)';
+    const clipAttr = attr('left', item.getAttribute(CLIP_DIRECTION));
+    const clipStart = getClipDirection(clipAttr);
+    const clipEnd = getClipDirection('full');
     //create timeline
     const tl = scrollInTL(item);
     tl.fromTo(
@@ -200,12 +190,12 @@ export const scrollIn = function (gsapContext) {
 
   const scrollInStagger = function (item) {
     if (!item) return;
-
+    const ease = attr(EASE_LARGE, item.getAttribute(SCROLL_STAGGER));
     // get the children of the item
     const children = gsap.utils.toArray(item.children);
     if (children.length === 0) return;
     const tl = scrollInTL(item);
-    const tween = defaultTween(children, tl, { stagger: 'large' });
+    const tween = defaultTween(children, tl, { stagger: ease });
   };
 
   const scrollInRichText = function (item) {

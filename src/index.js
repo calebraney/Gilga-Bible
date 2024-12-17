@@ -1,10 +1,16 @@
 import { attr } from './utilities';
+import { clickActive } from './interactions/click-active';
 import { hoverActive } from './interactions/hover-active';
+import { initLenis } from './interactions/lenis';
+import { load } from './interactions/load';
+import { textType } from './interactions/text-type';
+import { parallax } from './interactions/parallax';
 import { scrollIn } from './interactions/scroll-in';
+import { scrolling } from './interactions/scrolling';
 
 document.addEventListener('DOMContentLoaded', function () {
   // Comment out for production
-  console.log('Local Script');
+  // console.log('Local Script');
   // register gsap plugins if available
   if (gsap.ScrollTrigger !== undefined) {
     gsap.registerPlugin(ScrollTrigger);
@@ -12,9 +18,54 @@ document.addEventListener('DOMContentLoaded', function () {
   if (gsap.Flip !== undefined) {
     gsap.registerPlugin(Flip);
   }
+  if (gsap.TextPlugin !== undefined) {
+    gsap.registerPlugin(TextPlugin);
+  }
 
   //////////////////////////////
   //Global Variables
+  let lenis;
+
+  const typeSample = function () {
+    //animation id
+    const ANIMATION_ID = 'typesample';
+    // selectors
+    const ITEM = '[data-ix-typesample="item"]';
+    //elements
+    const items = [...document.querySelectorAll(ITEM)];
+    //guard clause
+    if (items.length === 0) return;
+    //add a tween for each item
+    items.forEach((item) => {
+      const children = item.children;
+      //setup timeline
+      let tl = gsap.timeline({
+        paused: true,
+        scrollTrigger: {
+          trigger: item,
+          start: 'center 90%',
+          end: 'bottom top',
+          toggleActions: 'play none none none',
+        },
+        defaults: {
+          duration: 1,
+          ease: 'power2.inOut',
+        },
+      });
+      tl.fromTo(
+        children,
+        {
+          opacity: 0,
+          // translateX: '0.5rem',
+        },
+        {
+          opacity: 1,
+          // translateX: '0rem',
+          stagger: { each: 0.02, from: 'start' },
+        }
+      );
+    });
+  };
 
   //////////////////////////////
   //Control Functions on page load
@@ -30,11 +81,19 @@ document.addEventListener('DOMContentLoaded', function () {
       },
       (gsapContext) => {
         let { isMobile, isTablet, isDesktop, reduceMotion } = gsapContext.conditions;
+        lenis = initLenis();
         //functional interactions
+        clickActive(gsapContext);
         hoverActive(gsapContext);
+        load(gsapContext);
+
         //conditional interactions
         if (!reduceMotion) {
           scrollIn(gsapContext);
+          scrolling(gsapContext);
+          parallax(gsapContext);
+          textType(gsapContext);
+          typeSample();
         }
       }
     );
